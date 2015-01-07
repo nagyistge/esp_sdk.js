@@ -7,7 +7,7 @@ esp_sdk.js
 
 ```javascript
 // instructions
-// git clone and step into the directory...
+// npm install evident
 
 // use an external credentials JSON file where you will
 // specify your email & password and (optional) hostname
