@@ -24,7 +24,7 @@ var credentials = require('credentials_example.json')
 // the library import is the constructor so pass the arguments
 // arguments (credentials, callback)
 
-var esp = require('index.js')(credentials, function main_callback(){
+var esp = require('evident')(credentials, function main_callback(){
 
     console.log('constructor callback')
 
