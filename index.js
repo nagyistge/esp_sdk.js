@@ -1,219 +1,244 @@
-var request = require('request')
+//var request = require('request')
+var http = require('http')
+var https = require('https')
 
-var username, password, host
+var username, password, host, port, protocol
 var token
 
 var nextpage
 
-function login(creds, cb){
+function login(creds, cb) {
 
   username = creds.username
   password = creds.password
-  host = creds.hostname
+  host = creds.host
+  port = creds.port
 
-  var options = {
-      url: host + '/api/v1/token/new',
-      headers: {
-          'Authorization-Email': username,
-          'Authorization': password,
-          'Accept': 'application/json'
-      },
-      method: 'GET'
-  };
-
-  function callback(error, response, body) {
-
-    if (response.statusCode === 200) {
-        var info = JSON.parse(body);
-        token = info.authentication_token
-        if(cb !== undefined){
-          return cb(null, response, body)
-        }
-    } else {
-      if(cb !== undefined){
-        return cb(body)
-      }
-    }
-
+  if (creds.protocol === 'http') {
+    protocol = 'http'
+  } else {
+    http = https
+    protocol = 'https'
   }
 
-  request(options, callback)
+  var options = {
+    host: host,
+    port: port,
+    path: '/api/v1/token/new',
+    headers: {
+      'Authorization-Email': username,
+      'Authorization': password,
+      'Accept': 'application/json'
+    },
+    method: 'GET'
+  };
+
+  var req = http.get(options, function (response) {
+
+    var buf = ''
+    response.setEncoding('utf8');
+
+    response.on('data', function (d) {
+      buf += d
+    })
+
+    response.on('end', function () {
+      console.log('got token!')
+      buf = JSON.parse(buf)
+      token = buf.authentication_token
+
+      if (cb !== undefined) {
+        return cb(null, response)
+      }
+
+    })
+
+  })
+
+  req.on('error', function (e) {
+    console.log('problem with the request ' + e)
+  })
 
 }
 
-function next(cb){
+function next(cb) {
+
   return apiCall(nextpage, cb)
 }
 
-function anotherpage(){
-  if(nextpage === null){
-    return false
+function anotherpage() {
+  if (nextpage === null) {
+    return false;
   } else {
-    return true
+    return true;
   }
-  // return nextpage
 }
 
-function apiCall(target, cb){
+function apiCall(target, cb) {
 
   var opts = {}
-  if(typeof target === 'object'){
+  if (typeof target === 'object') {
     opts.target = target.target
     opts.method = target.method
     target = opts.target
   }
 
   var options = {
-      url: host + target,
-      method: opts.method || 'GET',
-      headers: {
-          'Authorization-Email': username,
-          'Authorization': token,
-          'Accept': 'application/json'
-      }
+    host: host,
+    port: port,
+    path: target,
+    headers: {
+      'Authorization-Email': username,
+      'Authorization': token,
+      'Accept': 'application/json'
+    },
+    method: opts.method || 'GET'
   };
 
-  function request_callback(error, response, body) {
+  var req = http.get(options, function (response) {
 
-      if (response.statusCode === 200) {
+    var buf = ''
 
-        var info = JSON.parse(body);
+    response.setEncoding('utf8');
 
-        // pagination
+    response.on('data', function (d) {
+      buf += d
+    })
+
+    response.on('end', function () {
+
         nextpage = null
 
-        // var next_page = {}
-        if(response.caseless.dict.link !== undefined){
-          // console.log(response.caseless.dict.link)
-          var link = response.caseless.dict.link
+        if (response.statusCode !== 200) {
+          return console.log('bad status: ' + response.statusCode)
+        }
+
+        if (response.headers.link !== undefined) {
+          var link = response.headers.link
           var splitlink = link.split(',')
 
-          splitlink.forEach(function(part){
+          splitlink.forEach(function (part) {
             var splitpart = part.split(';')
-            if(splitpart[1].indexOf('rel=\"next\"') !== -1){
-
+            if (splitpart[1].indexOf('rel=\"next\"') !== -1) {
               var link = splitpart[0]
-              link = link.replace('<','')
-              link = link.replace('>','')
-              link = link.replace(host,'')
-              link = link.replace(' ','')
 
-              nextpage = link
+              link = link.replace(protocol + '://' + host + ':' + port + '/', '')
+              link = link.replace('<', '')
+              link = link.replace('>', '')
+              link = link.replace(' ', '')
 
+              nextpage = '/' + link
             }
           })
         }
 
-        if(cb !== undefined){
-          return cb(null,info)
+        if (cb !== undefined) {
+          return cb(null, JSON.parse(buf))
         }
 
-      } else {
+      }) // end of response.on('end')
 
-        if(cb !== undefined){
-          return cb({error: error, status: response.statusCode, res: body },null)
-        }
+  })
 
-      }
-
-  }
-
-  request(options, request_callback)
+  req.on('error', function (e) {
+    console.log('problem with the request ' + e)
+  })
 
 }
 
 // all the methods
 
-function getDashboard(cb){
+function getDashboard(cb) {
   return apiCall('/api/v1/dashboard', cb)
 }
 
-function getTimewarp(time, cb){
+function getTimewarp(time, cb) {
   var opts = {
-    target: '/api/v1/dashboard/timewarp/?dashboard[time]='+time,
+    target: '/api/v1/dashboard/timewarp/?dashboard[time]=' + time,
     method: 'POST'
   }
   return apiCall(opts, cb)
 }
 
-function getReports(cb){
+function getReports(cb) {
   return apiCall('/api/v1/reports', cb)
 }
 
-function getReport(id, cb){
+function getReport(id, cb) {
   return apiCall('/api/v1/reports/' + id, cb)
 }
 
-function getTeams(cb){
+function getTeams(cb) {
   return apiCall('/api/v1/teams', cb)
 }
 
-function getTeam(id, cb){
+function getTeam(id, cb) {
   return apiCall('/api/v1/teams/' + id, cb)
 }
 
-function getOrganizations(cb){
+function getOrganizations(cb) {
   return apiCall('/api/v1/organizations', cb)
 }
 
-function getOrganization(id, cb){
+function getOrganization(id, cb) {
   return apiCall('/api/v1/organizations/' + id, cb)
 }
 
-function getSuborganizations(cb){
+function getSuborganizations(cb) {
   return apiCall('/api/v1/sub_organizations', cb)
 }
 
-function getSuborganization(id, cb){
+function getSuborganization(id, cb) {
   return apiCall('/api/v1/sub_organizations/' + id, cb)
 }
 
-function getExternalaccounts(cb){
+function getExternalaccounts(cb) {
   return apiCall('/api/v1/external_accounts', cb)
 }
 
-function getExternalaccount(id, cb){
+function getExternalaccount(id, cb) {
   return apiCall('/api/v1/external_accounts/' + id, cb)
 }
 
-function getServices(cb){
+function getServices(cb) {
   return apiCall('/api/v1/services', cb)
 }
 
-function getService(id, cb){
+function getService(id, cb) {
   return apiCall('/api/v1/services/' + id, cb)
 }
 
-function getSignatures(cb){
+function getSignatures(cb) {
   return apiCall('/api/v1/signatures', cb)
 }
 
-function getSignature(id, cb){
+function getSignature(id, cb) {
   return apiCall('/api/v1/signatures/' + id, cb)
 }
 
-function getSignatureNames(cb){
+function getSignatureNames(cb) {
   return apiCall('/api/v1/signatures/signature_names/', cb)
 }
 
-function getAlerts(id, cb){
+function getAlerts(id, cb) {
   return apiCall('/api/v1/reports/' + id + '/alerts/', cb)
 }
-function getAlert(id, cb){
+
+function getAlert(id, cb) {
   return apiCall('/api/v1/alerts/' + id, cb)
 }
 
-function getSuppressions(cb){
+function getSuppressions(cb) {
   return apiCall('/api/v1/suppressions', cb)
 }
-function getSuppression(id, cb){
+
+function getSuppression(id, cb) {
   return apiCall('/api/v1/suppression/' + id, cb)
 }
 
-function searchAlerts(filters, cb){
-
-}
-
+// function searchAlerts(filters, cb) {
+//
+// }
 
 module.exports = {
   login: login,
@@ -240,5 +265,5 @@ module.exports = {
   getAlert: getAlert,
   getSuppressions: getSuppressions,
   getSuppression: getSuppression,
-  searchAlerts: searchAlerts
+//  searchAlerts: searchAlerts
 }
