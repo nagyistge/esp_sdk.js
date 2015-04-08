@@ -3,22 +3,16 @@ esp_sdk.js
 
 ###Node.js library for [evident.io](http://evident.io) API
 
-
-example credentials file
-```json
-{
-  "username": "username@domain.tld",
-  "password": "mys3curep4sswerd",
-  "hostname": "https://api.evident.io"
-}
-```
-
-example usage
 ```javascript
-var fs = require('fs')
 var esp = require('esp_sdk.js')
 
-var creds = JSON.parse(fs.readFileSync('./local_creds.json'))
+var creds = {
+  "username": "sdkuser@evident.io",
+  "password": "v3rysecur3password",
+  "host": "localhost",
+  "port": 3000,
+  "protocol": "http"
+}
 
 console.log(creds)
 
@@ -26,12 +20,19 @@ esp.login(creds, function (err) {
 
   if(err){
     console.log('problem getting token')
-    console.log('reason: '+err)
+    return console.log('reason: '+err)
   }
+
+  // esp.getReports(display_every_page)
+  // return;
 
   esp.getReports(function(err,data){
 
-    console.log('id of the latest report: ' + data[0].id)
+    if(err){
+      console.log('error getting reports: ' + err)
+    } else {
+      console.log('id of the latest report: ' + data[0].id)
+    }
 
     esp.getAlerts(data[0].id, function(err,data){
 
@@ -50,7 +51,6 @@ esp.login(creds, function (err) {
 
   })
 
-
   esp.getDashboard(function(err,data){
     if(err){
       return;
@@ -59,9 +59,7 @@ esp.login(creds, function (err) {
     }
   })
 
-
   // return;
-  // esp.getReports(display_every_page)
 
 })
 
@@ -73,8 +71,8 @@ function display_every_page(err, data) {
 
   } else {
 
-    console.log(data.length)
-    console.log(data)
+    console.log('length of data returned: '+data.length)
+    // console.log(data)
 
     if (esp.anotherpage() !== false) {
 
