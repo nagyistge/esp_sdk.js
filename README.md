@@ -16,7 +16,7 @@ example credentials file
 example usage
 ```javascript
 var fs = require('fs')
-var esp = require('./index.js')
+var esp = require('esp_sdk.js')
 
 var creds = JSON.parse(fs.readFileSync('./local_creds.json'))
 
