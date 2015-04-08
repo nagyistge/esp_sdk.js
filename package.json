@@ -1,6 +1,6 @@
 {
-  "name": "evident",
-  "version": "1.0.0",
+  "name": "esp_sdk.js",
+  "version": "2.0.0",
   "description": "nodejs module for evident.io",
   "main": "index.js",
   "scripts": {
@@ -10,18 +10,14 @@
     "type": "git",
     "url": "https://github.com/EvidentSecurity/esp_sdk.js.git"
   },
-  "author": {
-    "name": "@billautomata"
-  },
+  "author": "@billautomata",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/EvidentSecurity/esp_sdk.js/issues"
   },
   "homepage": "https://github.com/EvidentSecurity/esp_sdk.js",
   "dependencies": {
-    "moment": "~2.8.2",
-    "request": "~2.41.0",
-    "jquery": "~2.1.1"
+    "request": "~2.41.0"
   },
   "directories": {
     "test": "tests"
@@ -33,8 +29,5 @@
     "aws",
     "security"
   ],
-  "readme": "esp_sdk.js\n==========\n\n###Node.js library for [evident.io](http://evident.io) API\n\n\n\n```javascript\n// instructions\n// git clone and step into the directory...\n\n// use an external credentials JSON file where you will\n// specify your email & password and (optional) hostname\n\nvar credentials = require('credentials_example.json')\n\n// credentials object fields\n// {\n//   \"email\": \"email@host.tld\",\n//   \"password\": \"p4ssw3rd\",\n//   \"hostname\": \"https://api.evident.io\" // optional\n// }\n\n// the library import is the constructor so pass the arguments\n// arguments (credentials, callback)\n\nvar esp = require('index.js')(credentials, function main_callback(){\n\n    console.log('constructor callback')\n\n    // most API calls accept only a callback\n    // function that will be passed three\n    // arguments (error, response, nextpage)\n    esp.getDashboard(function(err,response,nextpage){\n      if(err){ // dag yo\n      } else {\n        console.log(JSON.stringify(response))\n      }\n    })\n\n    esp.getReports(function(err,response,nextpage){\n      if(err){ // dag yo\n      } else {\n        console.log(JSON.stringify(response))\n      }\n\n      if(nextpage){ // there is more!\n        console.log(nextpage)\n      }\n\n    })\n\n    // API calls that request a specific item and the same callback function\n    // with the arguments (err, response, nextpage)\n    esp.getReport(16, console.log)\n\n    var some_time_ago = Math.floor(Date.now()/1000)-10000\n\n    // previous dashboards using timewarp\n    esp.getTimewarp(some_time_ago, console.log)\n\n    // common functions\n    esp.getExternalaccounts(console.log)\n    esp.getExternalaccount(1,console.log)\n\n    esp.getServices(console.log)\n    esp.getService(11,console.log)\n\n    esp.getTeams(console.log)\n    esp.getTeam(11,console.log)\n\n    esp.getSignatures(console.log)\n    esp.getSignature(22,console.log)\n    esp.getSignatureNames(console.log)\n\n  }\n)\n```\n",
-  "readmeFilename": "README.md",
-  "_id": "evident@1.0.0",
   "_from": "evident@"
 }

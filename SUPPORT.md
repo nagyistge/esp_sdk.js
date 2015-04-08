@@ -5,6 +5,8 @@
 | x | `/api/v1/dashboard/timewarp` | POST |
 | x | `/api/v1/reports` | GET |
 | x | `/api/v1/reports/:id` | GET |
+| x | `/api/v1/reports/:id/alerts` | GET |
+| x | `/api/v1/alerts/:id` | GET |
 | x | `/api/v1/users` | GET |
 | x | `/api/v1/users/:id` | GET |
 | x | `/api/v1/teams` | GET |
@@ -17,3 +19,5 @@
 | x | `/api/v1/signatures/:id` | GET |
 | x | `/api/v1/custom_signatures` | GET |
 | x | `/api/v1/custom_signatures/:id` | GET |
+| x | `/api/v1/suppressions` | GET |
+| x | `/api/v1/suppressions/:id` | GET |

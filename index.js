@@ -1,118 +1,60 @@
-var util = require('util')
-var assert = require('assert')
 var request = require('request')
 
-var jquery
-if(typeof window !== 'undefined'){
-  jquery = require('jquery')
-  jquery.support.cors = true;
-}
+var username, password, host
+var token
 
-// constructor
-function Client(options, callback){
+var nextpage
 
-  var self = this;
+function login(creds, cb){
 
-  if(options !== undefined){
-    console.log('constructor running')
-    this.options = options
+  username = creds.username
+  password = creds.password
+  host = creds.hostname
 
-    this.hostname = options.hostname || 'https://api.evident.io'
+  var options = {
+      url: host + '/api/v1/token/new',
+      headers: {
+          'Authorization-Email': username,
+          'Authorization': password,
+          'Accept': 'application/json'
+      },
+      method: 'GET'
+  };
 
-    this.token = ''
-    this.getToken(callback)
+  function callback(error, response, body) {
 
-  } else {
-
-    console.log('constructor running w/o credentials, in the browser')
-    console.log('running callback to set the esp variable on the window')
-
-    this.options = {}
-    this.hostname = 'https://api.evident.io'
-    this.token = ''
-
-    if(callback !== undefined){
-      callback()
+    if (response.statusCode === 200) {
+        var info = JSON.parse(body);
+        token = info.authentication_token
+        if(cb !== undefined){
+          return cb(null, response, body)
+        }
+    } else {
+      if(cb !== undefined){
+        return cb(body)
+      }
     }
+
   }
 
+  request(options, callback)
+
 }
 
-Client.prototype.login = function(email, password, cb){
-  this.options.email = email
-  this.options.password = password
-  this.getToken(cb)
+function next(cb){
+  return apiCall(nextpage, cb)
 }
 
-Client.prototype.getDashboard = function(cb){
-  this.apiCall('/api/v1/dashboard', cb)
-}
-
-Client.prototype.getTimewarp = function(time, cb){
-  var opts = {
-    target: '/api/v1/dashboard/timewarp/?dashboard[time]='+time,
-    method: 'POST'
+function anotherpage(){
+  if(nextpage === null){
+    return false
+  } else {
+    return true
   }
-  this.apiCall(opts, cb)
+  // return nextpage
 }
 
-Client.prototype.getReports = function(cb){
-  return this.apiCall('/api/v1/reports', cb)
-}
-Client.prototype.getReport = function(id, cb){
-  this.apiCall('/api/v1/reports/' + id, cb)
-}
-
-Client.prototype.getTeams = function(cb){
-  this.apiCall('/api/v1/teams', cb)
-}
-Client.prototype.getTeam = function(id, cb){
-  this.apiCall('/api/v1/teams/' + id, cb)
-}
-
-Client.prototype.getOrganizations = function(cb){
-  this.apiCall('/api/v1/organizations', cb)
-}
-Client.prototype.getOrganization = function(id, cb){
-  this.apiCall('/api/v1/organizations/' + id, cb)
-}
-
-Client.prototype.getSuborganizations = function(cb){
-  this.apiCall('/api/v1/sub_organizations', cb)
-}
-Client.prototype.getSubOrganization = function(id, cb){
-  this.apiCall('/api/v1/sub_organizations/' + id, cb)
-}
-
-Client.prototype.getExternalaccounts = function(cb){
-  this.apiCall('/api/v1/external_accounts', cb)
-}
-Client.prototype.getExternalaccount = function(id, cb){
-  this.apiCall('/api/v1/external_accounts/' + id, cb)
-}
-
-Client.prototype.getServices = function(cb){
-  this.apiCall('/api/v1/services', cb)
-}
-Client.prototype.getService = function(id, cb){
-  this.apiCall('/api/v1/services/' + id, cb)
-}
-
-Client.prototype.getSignatures = function(cb){
-  this.apiCall('/api/v1/signatures', cb)
-}
-Client.prototype.getSignature = function(id, cb){
-  this.apiCall('/api/v1/signatures/' + id, cb)
-}
-Client.prototype.getSignatureNames = function(cb){
-  this.apiCall('/api/v1/signatures/signature_names/', cb)
-}
-
-////////////////////////////////////////////////
-////////////////////////////////////
-////////////////////////
-////////////
-Client.prototype.apiCall = function(target, cb){
+function apiCall(target, cb){
 
   var opts = {}
   if(typeof target === 'object'){
@@ -121,44 +63,49 @@ Client.prototype.apiCall = function(target, cb){
     target = opts.target
   }
 
-  console.log('api call!')
-  console.log(target)
-
-  var self = this
-
-  console.log('token ' + self.token)
-
   var options = {
-      url: self.hostname + target,
+      url: host + target,
       method: opts.method || 'GET',
       headers: {
-          'Authorization-Email': this.options.email,
-          'Authorization': this.token
+          'Authorization-Email': username,
+          'Authorization': token,
+          'Accept': 'application/json'
       }
   };
 
   function request_callback(error, response, body) {
 
-      if (!error && response.statusCode === 200) {
+      if (response.statusCode === 200) {
 
         var info = JSON.parse(body);
 
         // pagination
-        var nextpage = null
+        nextpage = null
 
-        var next_page = {}
+        // var next_page = {}
         if(response.caseless.dict.link !== undefined){
-          next_page = JSON.parse(response.caseless.dict.link)
-        }
+          // console.log(response.caseless.dict.link)
+          var link = response.caseless.dict.link
+          var splitlink = link.split(',')
 
-        if(Object.keys(next_page).length !== 0){
-            console.log('//==//==//==//==//')
-            console.log(JSON.parse(response.caseless.dict.link))
-            nextpage = JSON.parse(response.caseless.dict.link)
+          splitlink.forEach(function(part){
+            var splitpart = part.split(';')
+            if(splitpart[1].indexOf('rel=\"next\"') !== -1){
+
+              var link = splitpart[0]
+              link = link.replace('<','')
+              link = link.replace('>','')
+              link = link.replace(host,'')
+              link = link.replace(' ','')
+
+              nextpage = link
+
+            }
+          })
         }
 
         if(cb !== undefined){
-          return cb(null,info,nextpage)
+          return cb(null,info)
         }
 
       } else {
@@ -175,57 +122,123 @@ Client.prototype.apiCall = function(target, cb){
 
 }
 
-Client.prototype.getToken = function(cb){
+// all the methods
 
-  console.log('get token running')
+function getDashboard(cb){
+  return apiCall('/api/v1/dashboard', cb)
+}
 
-  var self = this
-
-  var options = {
-      url: self.hostname + '/api/v1/token/new',
-      headers: {
-          'Authorization-Email': this.options.email,
-          'Authorization': this.options.password
-      }
-  };
-
-  function callback(error, response, body) {
-
-    console.log('running callback from get token')
-
-
-    if (!error && response.statusCode === 200) {
-        var info = JSON.parse(body);
-
-        // console.log('info')
-        // console.log(info)
-        // console.log(Object.keys(info))
-
-        self.token = info.authentication_token
-
-        if(cb !== undefined){
-          cb()
-        }
-
-    } else {
-
-      console.log('error')
-      console.log(error)
-      console.log(response.statusCode)
-      console.log(body)
-
-      //console.log(Object.keys(error))
-      console.log(error)
-
-    }
-
+function getTimewarp(time, cb){
+  var opts = {
+    target: '/api/v1/dashboard/timewarp/?dashboard[time]='+time,
+    method: 'POST'
   }
+  return apiCall(opts, cb)
+}
 
-  request(options, callback)
+function getReports(cb){
+  return apiCall('/api/v1/reports', cb)
+}
+
+function getReport(id, cb){
+  return apiCall('/api/v1/reports/' + id, cb)
+}
+
+function getTeams(cb){
+  return apiCall('/api/v1/teams', cb)
+}
+
+function getTeam(id, cb){
+  return apiCall('/api/v1/teams/' + id, cb)
+}
+
+function getOrganizations(cb){
+  return apiCall('/api/v1/organizations', cb)
+}
+
+function getOrganization(id, cb){
+  return apiCall('/api/v1/organizations/' + id, cb)
+}
+
+function getSuborganizations(cb){
+  return apiCall('/api/v1/sub_organizations', cb)
+}
+
+function getSuborganization(id, cb){
+  return apiCall('/api/v1/sub_organizations/' + id, cb)
+}
+
+function getExternalaccounts(cb){
+  return apiCall('/api/v1/external_accounts', cb)
+}
+
+function getExternalaccount(id, cb){
+  return apiCall('/api/v1/external_accounts/' + id, cb)
+}
+
+function getServices(cb){
+  return apiCall('/api/v1/services', cb)
+}
+
+function getService(id, cb){
+  return apiCall('/api/v1/services/' + id, cb)
+}
+
+function getSignatures(cb){
+  return apiCall('/api/v1/signatures', cb)
+}
+
+function getSignature(id, cb){
+  return apiCall('/api/v1/signatures/' + id, cb)
+}
+
+function getSignatureNames(cb){
+  return apiCall('/api/v1/signatures/signature_names/', cb)
+}
+
+function getAlerts(id, cb){
+  return apiCall('/api/v1/reports/' + id + '/alerts/', cb)
+}
+function getAlert(id, cb){
+  return apiCall('/api/v1/alerts/' + id, cb)
+}
+
+function getSuppressions(cb){
+  return apiCall('/api/v1/suppressions', cb)
+}
+function getSuppression(id, cb){
+  return apiCall('/api/v1/suppression/' + id, cb)
+}
+
+function searchAlerts(filters, cb){
 
 }
 
-module.exports = (function(options, callback){
-  //assert(options, 'Username and Password Required')
-  return new Client(options, callback)
-})
+
+module.exports = {
+  login: login,
+  next: next,
+  anotherpage: anotherpage,
+  getDashboard: getDashboard,
+  getTimewarp: getTimewarp,
+  getReports: getReports,
+  getReport: getReport,
+  getTeams: getTeams,
+  getTeam: getTeam,
+  getOrganizations: getOrganizations,
+  getOrganization: getOrganization,
+  getSuborganizations: getSuborganizations,
+  getSuborganization: getSuborganization,
+  getExternalaccounts: getExternalaccounts,
+  getExternalaccount: getExternalaccount,
+  getServices: getServices,
+  getService: getService,
+  getSignatures: getSignatures,
+  getSignature: getSignature,
+  getSignatureNames: getSignatureNames,
+  getAlerts: getAlerts,
+  getAlert: getAlert,
+  getSuppressions: getSuppressions,
+  getSuppression: getSuppression,
+  searchAlerts: searchAlerts
+}

@@ -4,75 +4,88 @@ esp_sdk.js
 ###Node.js library for [evident.io](http://evident.io) API
 
 
+example credentials file
+```json
+{
+  "username": "username@domain.tld",
+  "password": "mys3curep4sswerd",
+  "hostname": "https://api.evident.io"
+}
+```
 
+example usage
 ```javascript
-// instructions
-// npm install evident
+var fs = require('fs')
+var esp = require('./index.js')
 
-// use an external credentials JSON file where you will
-// specify your email & password and (optional) hostname
+var creds = JSON.parse(fs.readFileSync('./local_creds.json'))
 
-var credentials = require('credentials_example.json')
+console.log(creds)
 
-// credentials object fields
-// {
-//   "email": "email@host.tld",
-//   "password": "p4ssw3rd",
-//   "hostname": "https://api.evident.io" // optional
-// }
+esp.login(creds, function (err) {
 
-// the library import is the constructor so pass the arguments
-// arguments (credentials, callback)
-
-var esp = require('evident')(credentials, function main_callback(){
-
-    console.log('constructor callback')
-
-    // most API calls accept only a callback
-    // function that will be passed three
-    // arguments (error, response, nextpage)
-    esp.getDashboard(function(err,response,nextpage){
-      if(err){ // dag yo
-      } else {
-        console.log(JSON.stringify(response))
-      }
-    })
-
-    esp.getReports(function(err,response,nextpage){
-      if(err){ // dag yo
-      } else {
-        console.log(JSON.stringify(response))
-      }
-
-      if(nextpage){ // there is more!
-        console.log(nextpage)
-      }
-
-    })
-
-    // API calls that request a specific item and the same callback function
-    // with the arguments (err, response, nextpage)
-    esp.getReport(16, console.log)
-
-    var some_time_ago = Math.floor(Date.now()/1000)-10000
-
-    // previous dashboards using timewarp
-    esp.getTimewarp(some_time_ago, console.log)
-
-    // common functions
-    esp.getExternalaccounts(console.log)
-    esp.getExternalaccount(1,console.log)
-
-    esp.getServices(console.log)
-    esp.getService(11,console.log)
-
-    esp.getTeams(console.log)
-    esp.getTeam(11,console.log)
-
-    esp.getSignatures(console.log)
-    esp.getSignature(22,console.log)
-    esp.getSignatureNames(console.log)
-
+  if(err){
+    console.log('problem getting token')
+    console.log('reason: '+err)
   }
-)
+
+  esp.getReports(function(err,data){
+
+    console.log('id of the latest report: ' + data[0].id)
+
+    esp.getAlerts(data[0].id, function(err,data){
+
+      console.log('id of the latest alert in the that report: ' + data[0].id)
+
+      console.log(esp.anotherpage())
+
+      esp.getAlert(data[0].id, function(err,data){
+
+        console.log('the alert itself')
+        console.log(data)
+
+      })
+
+    })
+
+  })
+
+
+  esp.getDashboard(function(err,data){
+    if(err){
+      return;
+    } else {
+      console.log(data)
+    }
+  })
+
+
+  // return;
+  // esp.getReports(display_every_page)
+
+})
+
+function display_every_page(err, data) {
+
+  if (err) {
+
+    return console.log('error!')
+
+  } else {
+
+    console.log(data.length)
+    console.log(data)
+
+    if (esp.anotherpage() !== false) {
+
+      esp.next(display_every_page)
+
+    } else {
+
+      console.log('done!')
+
+    }
+  }
+}
+
 ```
