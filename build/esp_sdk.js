@@ -37,7 +37,7 @@ function login(creds, cb) {
   var req = http.get(options, function (response) {
 
     var buf = ''
-    response.setEncoding('utf8');
+    //response.setEncoding('utf8');
 
     response.on('data', function (d) {
       buf += d
@@ -99,8 +99,6 @@ function apiCall(target, cb) {
   var req = http.get(options, function (response) {
 
     var buf = ''
-
-    response.setEncoding('utf8');
 
     response.on('data', function (d) {
       buf += d
