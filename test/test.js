@@ -44,9 +44,6 @@ esp.login(creds, function (err) {
                                                     // about the status code
   }
 
-  esp.getSignatureNames(console.log)
-  return;
-
   // At this point we should have an authenticated session to make requests.
 
   // call esp.getReports and pass it a callback function
