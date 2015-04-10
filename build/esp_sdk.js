@@ -37,20 +37,30 @@ function login(creds, cb) {
   var req = http.get(options, function (response) {
 
     var buf = ''
-    //response.setEncoding('utf8');
+      //response.setEncoding('utf8');
 
     response.on('data', function (d) {
       buf += d
     })
 
     response.on('end', function () {
-      console.log('got token!')
-      buf = JSON.parse(buf)
-      token = buf.authentication_token
 
-      if (cb !== undefined) {
-        return cb(null, response)
+      if (response.statusCode !== 200) {
+        // error
+        console.log('error getting token')
+        return cb(response, null)
+      } else {
+        if (cb !== undefined) {
+
+          console.log('success getting token!')
+          buf = JSON.parse(buf)
+          token = buf.authentication_token
+
+          return cb(null, response)
+        }
       }
+
+
 
     })
 
@@ -264,7 +274,7 @@ module.exports = {
   getAlert: getAlert,
   getSuppressions: getSuppressions,
   getSuppression: getSuppression,
-//  searchAlerts: searchAlerts
+  //  searchAlerts: searchAlerts
 }
 
 },{"http":8,"https":12}],2:[function(require,module,exports){
