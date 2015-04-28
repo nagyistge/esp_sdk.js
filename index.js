@@ -7,7 +7,7 @@ var token
 
 var nextpage
 
-function login(creds, cb) {
+function setCredentials(creds) {
 
   username = creds.username
   password = creds.password
@@ -20,6 +20,16 @@ function login(creds, cb) {
     http = https
     protocol = 'https'
   }
+
+  if(creds.token !== undefined){
+    token = creds.token
+  }
+
+}
+
+function login(creds, cb) {
+
+  setCredentials(creds)
 
   var options = {
     host: host,
@@ -36,7 +46,6 @@ function login(creds, cb) {
   var req = http.get(options, function (response) {
 
     var buf = ''
-      //response.setEncoding('utf8');
 
     response.on('data', function (d) {
       buf += d
@@ -58,8 +67,6 @@ function login(creds, cb) {
           return cb(null, response)
         }
       }
-
-
 
     })
 
@@ -250,6 +257,7 @@ function getSuppression(id, cb) {
 
 module.exports = {
   login: login,
+  setCredentials: setCredentials,
   next: next,
   anotherpage: anotherpage,
   getDashboard: getDashboard,
