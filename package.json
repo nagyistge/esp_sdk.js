@@ -1,6 +1,6 @@
 {
   "name": "esp_sdk.js",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "nodejs module for evident.io",
   "main": "index.js",
   "scripts": {

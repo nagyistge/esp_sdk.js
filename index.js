@@ -64,7 +64,9 @@ function login(creds, cb) {
           buf = JSON.parse(buf)
           token = buf.authentication_token
 
-          return cb(null, response)
+          creds.token = token
+
+          return cb(null, response, creds)
         }
       }
 
