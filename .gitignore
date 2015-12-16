@@ -1,4 +1,4 @@
-*cred*
-node_modules
 .git
+.env*
 *.log
+node_modules

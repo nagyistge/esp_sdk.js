@@ -1,11 +1,10 @@
 {
-  "name": "esp_sdk.js",
-  "version": "3.2.1",
-  "description": "nodejs module for evident.io",
+  "name": "evident",
+  "version": "4.0.0",
+  "description": "Javascript SDK for Evident Security Platform - evident.io",
   "main": "index.js",
   "scripts": {
-    "test": "node test/test.js",
-    "build_module": "browserify -s esp_sdk index.js -o build/esp_sdk.js; uglifyjs build/esp_sdk.js > build/esp_sdk.min.js"
+    "test": "node test/test.js"
   },
   "repository": {
     "type": "git",
@@ -21,7 +20,14 @@
   "directories": {
     "test": "tests"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-run": "^0.5.2",
+    "grunt-standard": "^2.0.0",
+    "standard": "^5.4.1",
+    "tape": "^4.2.2"
+  },
   "keywords": [
     "evident.io",
     "esp",
