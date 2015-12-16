@@ -1,287 +1,157 @@
-//var request = require('request')
-var http = require('http')
-var https = require('https')
+module.exports = esp
 
-var username, password, host, port, protocol
-var token
-
-var nextpage
-
-function setCredentials(creds) {
-
-  username = creds.username
-  password = creds.password
-  host = creds.host
-  port = creds.port
-
-  if (creds.protocol === 'http') {
-    protocol = 'http'
-  } else {
-    http = https
-    protocol = 'https'
+function esp (opts) {
+  if (opts === undefined) {
+    opts = {}
   }
 
-  if(creds.token !== undefined){
-    token = creds.token
+  var api_request = require('./src/request.js')
+
+  var include = ''
+
+  if (opts.include !== undefined) {
+    include = opts.include
   }
 
-}
+  var global_cb
+  var next_params = {
+    another_page: false,
+    next_path: ''
+  }
 
-function login(creds, cb) {
+  function next (cb) {
+    if (cb !== undefined) {
+      global_cb = cb
+    }
+    if (next_params.another_page) {
+      api_request({
+        method: 'GET',
+        path: next_params.next_path,
+        callback: master_callback,
+        include: include
+      })
+    } else {
+      return cb('no next page', null)
+    }
+  }
 
-  setCredentials(creds)
-
-  var options = {
-    host: host,
-    port: port,
-    path: '/api/v1/token/new',
-    headers: {
-      'Authorization-Email': username,
-      'Authorization': password,
-      'Accept': 'application/json'
-    },
-    method: 'GET'
-  };
-
-  var req = http.get(options, function (response) {
-
-    var buf = ''
-
-    response.on('data', function (d) {
-      buf += d
-    })
-
-    response.on('end', function () {
-
-      if (response.statusCode !== 200) {
-        // error
-        console.log('error getting token')
-        return cb(response, null)
+  function master_callback (err, data) {
+    if (err) {
+      return global_cb(err, null)
+    }
+    if (data.links === undefined) {
+      return global_cb(null, data)
+    } else {
+      if (data.links.next === undefined) {
+        // this is no next page
+        next_params.another_page = false
+        next_params.next_path = ''
+        return global_cb(null, data)
       } else {
-        if (cb !== undefined) {
-
-          console.log('success getting token!')
-          buf = JSON.parse(buf)
-          token = buf.authentication_token
-
-          creds.token = token
-
-          return cb(null, response, creds)
-        }
+        // there is a next page
+        next_params.another_page = true
+        next_params.next_path = data.links.next.split('/api/v2/')[1]
+        return global_cb(null, data)
       }
-
-    })
-
-  })
-
-  req.on('error', function (e) {
-    console.log('problem with the request ' + e)
-  })
-
-}
-
-function next(cb) {
-
-  return apiCall(nextpage, cb)
-}
-
-function anotherpage() {
-  if (nextpage === null) {
-    return false;
-  } else {
-    return true;
-  }
-}
-
-function apiCall(target, cb) {
-
-  var opts = {}
-  if (typeof target === 'object') {
-    opts.target = target.target
-    opts.method = target.method
-    target = opts.target
+    }
   }
 
-  var options = {
-    host: host,
-    port: port,
-    path: target,
-    headers: {
-      'Authorization-Email': username,
-      'Authorization': token,
-      'Accept': 'application/json'
-    },
-    method: opts.method || 'GET'
-  };
+  // methods for API access added to the return object
+  var return_object = {}
 
-  var req = http.get(options, function (response) {
+  var routes = []
 
-    var buf = ''
+  // add all the routes from the file
+  routes = routes.concat(require('./src/routes_GET.js'))
+  routes = routes.concat(require('./src/routes_POST.js'))
 
-    response.on('data', function (d) {
-      buf += d
-    })
-
-    response.on('end', function () {
-
-        nextpage = null
-
-        if (response.statusCode !== 200) {
-          return console.log('bad status: ' + response.statusCode)
-        }
-
-        if (response.headers.link !== undefined) {
-          var link = response.headers.link
-          var splitlink = link.split(',')
-
-          splitlink.forEach(function (part) {
-            var splitpart = part.split(';')
-            if (splitpart[1].indexOf('rel=\"next\"') !== -1) {
-              var link = splitpart[0]
-
-              link = link.replace(protocol + '://' + host + ':' + port + '/', '')
-              link = link.replace('<', '')
-              link = link.replace('>', '')
-              link = link.replace(' ', '')
-
-              nextpage = '/' + link
-            }
+  routes.forEach(function (route) {
+    // create post routes that have two arguments
+    if (route.method === 'POST' || route.method === 'PATCH' || route.method === 'DELETE') {
+      // POST, PATCH, DELETE
+      if (route.num_args === 2) {
+        return_object[route.fn] = function (params, cb) {
+          global_cb = cb
+          api_request({
+            method: route.method,
+            path: route.path,
+            callback: master_callback,
+            include: include,
+            body: params
           })
         }
+      } else if (route.num_args === 3) {
+        // update
+        return_object[route.fn] = function (id, params, cb) {
+          global_cb = cb
 
-        if (cb !== undefined) {
-          return cb(null, JSON.parse(buf))
+          // split the path on the ID, insert the argument
+          var split_path = route.path.split(':id')
+          // join the path back together
+          var new_path = [split_path[0], id].join('')
+          // add any trailing segments
+          if (split_path.length > 1) {
+            new_path += split_path[1]
+          }
+
+          api_request({
+            method: route.method,
+            path: new_path,
+            callback: master_callback,
+            include: include,
+            body: params
+          })
         }
+      }
+    } else {
+      // GET
+      if (route.num_args === 1) {
+        // just the callback  -- fn(callback)
+        return_object[route.fn] = function (cb) {
+          global_cb = cb
+          api_request({
+            method: route.method,
+            path: route.path,
+            callback: master_callback,
+            include: include
+          })
+        }
+      } else if (route.num_args === 2) {
+        // a callback and an 'id' value -- fn(id, callback)
+        return_object[route.fn] = function (id, cb) {
+          global_cb = cb
 
-      }) // end of response.on('end')
+          // split the path on the ID, insert the argument
+          var split_path = route.path.split(':id')
 
+          // join the path back together
+          var new_path = [split_path[0], id].join('')
+
+          // add any trailing segments
+          if (split_path.length > 1) {
+            new_path += split_path[1]
+          }
+
+          api_request({
+            method: route.method,
+            path: new_path,
+            callback: master_callback,
+            include: include
+          })
+        }
+      }
+    }
   })
 
-  req.on('error', function (e) {
-    console.log('problem with the request ' + e)
-  })
+  return_object.next = next
 
-}
-
-// all the methods
-
-function getDashboard(cb) {
-  return apiCall('/api/v1/dashboard', cb)
-}
-
-function getTimewarp(time, cb) {
-  var opts = {
-    target: '/api/v1/dashboard/timewarp/?dashboard[time]=' + time,
-    method: 'POST'
+  // debug level functions - should be removed after the API is nailed down
+  return_object.anotherpage = function () {
+    return next_params.another_page
   }
-  return apiCall(opts, cb)
-}
+  return_object.getparams = function () {
+    return next_params
+  }
 
-function getReports(cb) {
-  return apiCall('/api/v1/reports', cb)
-}
-
-function getReport(id, cb) {
-  return apiCall('/api/v1/reports/' + id, cb)
-}
-
-function getTeams(cb) {
-  return apiCall('/api/v1/teams', cb)
-}
-
-function getTeam(id, cb) {
-  return apiCall('/api/v1/teams/' + id, cb)
-}
-
-function getOrganizations(cb) {
-  return apiCall('/api/v1/organizations', cb)
-}
-
-function getOrganization(id, cb) {
-  return apiCall('/api/v1/organizations/' + id, cb)
-}
-
-function getSuborganizations(cb) {
-  return apiCall('/api/v1/sub_organizations', cb)
-}
-
-function getSuborganization(id, cb) {
-  return apiCall('/api/v1/sub_organizations/' + id, cb)
-}
-
-function getExternalaccounts(cb) {
-  return apiCall('/api/v1/external_accounts', cb)
-}
-
-function getExternalaccount(id, cb) {
-  return apiCall('/api/v1/external_accounts/' + id, cb)
-}
-
-function getServices(cb) {
-  return apiCall('/api/v1/services', cb)
-}
-
-function getService(id, cb) {
-  return apiCall('/api/v1/services/' + id, cb)
-}
-
-function getSignatures(cb) {
-  return apiCall('/api/v1/signatures', cb)
-}
-
-function getSignature(id, cb) {
-  return apiCall('/api/v1/signatures/' + id, cb)
-}
-
-function getSignatureNames(cb) {
-  return apiCall('/api/v1/signatures/signature_names/', cb)
-}
-
-function getAlerts(id, cb) {
-  return apiCall('/api/v1/reports/' + id + '/alerts/', cb)
-}
-
-function getAlert(id, cb) {
-  return apiCall('/api/v1/alerts/' + id, cb)
-}
-
-function getSuppressions(cb) {
-  return apiCall('/api/v1/suppressions', cb)
-}
-
-function getSuppression(id, cb) {
-  return apiCall('/api/v1/suppression/' + id, cb)
-}
-
-// function searchAlerts(filters, cb) {
-//
-// }
-
-module.exports = {
-  login: login,
-  setCredentials: setCredentials,
-  next: next,
-  anotherpage: anotherpage,
-  getDashboard: getDashboard,
-  getTimewarp: getTimewarp,
-  getReports: getReports,
-  getReport: getReport,
-  getTeams: getTeams,
-  getTeam: getTeam,
-  getOrganizations: getOrganizations,
-  getOrganization: getOrganization,
-  getSuborganizations: getSuborganizations,
-  getSuborganization: getSuborganization,
-  getExternalaccounts: getExternalaccounts,
-  getExternalaccount: getExternalaccount,
-  getServices: getServices,
-  getService: getService,
-  getSignatures: getSignatures,
-  getSignature: getSignature,
-  getSignatureNames: getSignatureNames,
-  getAlerts: getAlerts,
-  getAlert: getAlert,
-  getSuppressions: getSuppressions,
-  getSuppression: getSuppression,
-  //  searchAlerts: searchAlerts
+  return return_object
 }

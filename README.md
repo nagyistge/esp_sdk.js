@@ -1,161 +1,178 @@
-esp_sdk.js
-==========
+# evident
 
-###Node.js library for [evident.io](http://evident.io) API
+The javascript SDK for the [Evident](https://evident.io) Security Platform for AWS.
 
-Below is example use of the SDK.  You can also find it in `test/test.js`.
+### install
 
-A reference of the API methods is [here](API.md).
+`npm install --save evident`
 
+### credentials
+API keys are stored in environment variables `ESP_ACCESS_KEY_ID` and `ESP_SECRET_ACCESS_KEY`.  If the environment variables are not set every callback will return early with an error specifying missing credentials.
+
+```bash
+export ESP_ACCESS_KEY_ID=PxfX+2+Ll4ZJk...
+export ESP_SECRET_ACCESS_KEY=9jtmPHfVA23BM...
+```
+Create new credentials in the [API Keys](https://esp.evident.io/settings/api_keys) section of your ESP settings.
+
+#### include the code
 ```javascript
-var esp = require('esp_sdk.js')
+// include the sdk by requiring the module
+var sdk = require('evident')
+```
 
-// test.js by @billautomata
-//
-// An application that demonstrates the esp_sdk.js API patterns.
-// It follows the standard node-style callback pattern where
-// the callbacks are provided two arguments (err, data) where
-// 'err' is null when there is no error for the callback.
-//
-// This app will create a credentials object, calls esp.login()
-// using that credentials object and in the callback calls
-// esp.getReports() and esp.getDashboard()
-//
-// In the esp.getReports() callback we take the .id property
-// and call esp.getAlerts() for that report, then take the first
-// alert_id returned and call esp.getAlert() in the callback provided
-// to esp.getAlerts()
-//
-// Also included in this example, but commented out, is how to
-// leverage the esp.anotherpage() detection and esp.next() function
-// to make recursive calls against the api to get a complete download
-// of paginated data.
-
-var creds = {
-  "username": "sdkuser@evident.io",
-  "password": "v3rysecur3password",
-  "host": "localhost",  // esp.evident.io for use with evident production
-  "port": 3000,         // 443 for use with evident production
-  "protocol": "http"    // 'https' is default, pass 'http' to override
-}
-
-console.log(creds)
-
-esp.login(creds, function (err) {
-
-  if (err) {
-
-    // if there was an error getting the token needed to make subsequent
-    // requests then the err object would be something other than null
-    // it would contain information about the response, 401 is access denied
-
-    console.log('problem getting token')
-    return console.log('reason: ' + err.statusCode); // return with a message
-                                                    // about the status code
+#### error first callback model
+```javascript
+sdk().getDashboard(function(err,data){
+  if(err){ console.log('error!', err) }
+  else {
+    console.log('data returned fine!')
+    console.log(data)
   }
-
-  // At this point we should have an authenticated session to make requests.
-
-  // call esp.getReports and pass it a callback function
-  // esp.getReports() returns information about the latest reports.
-  esp.getReports(function (err, data) {
-
-
-    if (err) {
-
-      // same as above, if there were and error receiveing the report data
-      // the esp_sdk would make the err argument a non-null object with info
-      // about the error
-
-      return console.log('error getting reports: ' + err.statusCode);
-    }
-
-    // The list of reports returned is a javascript array of objects.
-    // One of the fields returned is "id".  You can take that numeric ID
-    // and make a subsequent request for more information about that report
-
-    var a_report = data[0]
-
-    console.log('id of the latest report: ' + a_report.id)
-
-    // esp.getAlerts() returns information about alerts for a report_id
-    esp.getAlerts(a_report.id, function (err, data) {
-
-      if (err) {
-        return console.log('error getting report: ' + err.statusCode);
-      }
-
-      // Just as we saw above in esp.getReports, the returned list is an
-      // array of objects.
-
-      var first_alert = data[0]
-
-      console.log('id of the first alert in the that report: ' + first_alert.id)
-
-      // at any point in the callback chain you can see if there is another
-      // page of results available by calling esp.anotherpage()
-      // esp.anotherpage() will return a boolean value indicating if there
-      // are more results to be queried
-
-      console.log('is ther another page? ' + esp.anotherpage())
-
-      esp.getAlert(first_alert.id, function (err, data) {
-
-        if (err) {
-          return console.log('error getting alert: ' + err.statusCode);
-        }
-
-        var single_alert = data
-
-        console.log('the alert itself')
-        console.log(single_alert)
-
-      })
-
-    })
-
-  })
-
-  // make an http request the REST API to get an abbreviated version of the
-  // report statistics for the latest report for a team
-  esp.getDashboard(function (err, data) {
-    if (err) {
-      return;
-    } else {
-      console.log(data)
-    }
-  })
-
-  // esp.getReports(display_every_page)
-  // return;
-
-
-  return;
-
 })
+```
+The SDK utilizes the ["Error First" callback model](http://thenodeway.io/posts/understanding-error-first-callbacks/) that is standard to NodeJS.  If the first argument in the callback is null, then the request was successful and any returned data will be found in the second argument.
 
-function display_every_page(err, data) {
+#### create the SDK object
+```javascript
+// create an sdk object that can make API calls
+var esp = sdk()
+```
+The object returned by the `require` statement is a function that returns a closure that manages the method calls, isolates special parameters, and maintains associated callbacks during pagination calls.
 
-  if (err) {
+Do not make the method calls on the `sdk` object
+```javascript
+// DO NOT DO THIS
+sdk.getReports(callback) // INVALID CODE
+```
+Instead create more than one instance of the SDK object by running the function again.
+```javascript
+// DO THIS
+sdk().getReports(callback)  // VALID CODE
+// OR THIS
+var req = sdk()
+req.getReports(callback)   
+var req_b = sdk()
+req_b.getAlerts(32, callback)
+```
 
-    return console.log('error!')
+##### optional pass the SDK object an include parameter at construction
+```javascript
+// pass the included to the sdk constructor
+var esp = sdk({include:'region,external_account,custom_signature,tags'})
+esp.getAlert(1143, callback)
+```
+Some requests call for [extra parameters](http://api-docs.evident.io/#including-objects), you pass those to the SDK constructor function for that request.
 
+#### pagination `next([callback])`
+```javascript
+var esp = sdk()
+
+var all_alerts = []
+esp.getAlerts(1143, function latest_callback(err,data){
+  if(err){ console.log(err) }
+
+  all_alerts.push(data.data)
+
+  if(esp.anotherpage()){
+    esp.next()  // invokes latest_callback() when the data is returned
   } else {
-
-    console.log('length of data returned: ' + data.length)
-      // console.log(data)
-
-    if (esp.anotherpage() !== false) {
-
-      esp.next(display_every_page)
-
-    } else {
-
-      console.log('done!')
-
-    }
+    console.log('done!')
+    console.log(all_alerts)
   }
-}
+})
+```
+Some requests will have multiple pages of data.  In the callback call the `anotherpage()` method of the SDK instance.  It will return `true` if another page is available.  
 
+Call `next()` and the latest callback function passed to the SDK instance will be automatically invoked with the path of the next page in the series as the path.
 
+You can also pass an alternative callback to the `next()` function.
+```javascript
+var esp = sdk()
+
+var all_alerts = []
+esp.getAlerts(1143, function(err,data){
+  if(err){ console.log(err) }
+
+  all_alerts.push(data.data)
+
+  if(esp.anotherpage()){
+    esp.next(function another_callback(err,data){
+      // this is an alternate callback for next()
+      console.log(err,data)
+    })
+  } else {
+    console.log('done!')
+    console.log(all_alerts)    
+  }
+})
+```
+
+#### methods
+```javascript
+var sdk = require('evident')
+
+sdk().getDashboard(callback)
+sdk().getAlerts(report_id, callback)
+sdk().getAlert(alert_id, callback)
+sdk().getCloudTrailEvents(alert_id, callback)
+sdk().getCloudTrailEvent(cloud_trail_event_id, callback)
+sdk().getCustomSignatures(callback)
+sdk().getCustomSignature(custom_signature_id, callback)
+sdk().getExternalAccounts(callback)
+sdk().getExternalAccount(id, callback)
+sdk().getOrganizations(callback)
+sdk().getOrganization(organization_id, callback)
+sdk().getRegions(callback)
+sdk().getRegion(region_id, callback)
+sdk().getReports(callback)
+sdk().getReport(report_id, callback)
+sdk().getServices(callback)
+sdk().getService(service_id, callback)
+sdk().getSignatures(callback)
+sdk().getSignature(signature_id, callback)
+sdk().getStatsForReportLatest(callback)
+sdk().getStatsForReport(report_id, callback)
+sdk().getStatsForRegion(region_id, callback)
+sdk().getStatsForService(service_id, callback)
+sdk().getStatsForSignature(signature_id, callback)
+sdk().getStatsForCustomSignature(custom_signature_id, callback)
+sdk().getSuborganizations(callback)
+sdk().getSuborganization(suborganization_id, callback)
+sdk().getSuppressions(callback)
+sdk().getSuppression(suppression_id, callback)
+sdk().getTagsForAlert(alert_id, callback)
+sdk().getTag(tag_id, callback)
+sdk().getTeams(callback)
+sdk().getTeam(team_id, callback)
+sdk().getUsers(callback)
+sdk().getUser(user_id, callback)
+
+sdk().createContactRequest(payload, callback)
+sdk().createCustomSignature(payload, callback)
+sdk().updateCustomSignature(custom_signature_id, payload, callback)
+sdk().destroyCustomSignature(custom_signature_id, payload, callback)
+sdk().runCustomSignatureExisting(custom_signature_id, payload, callback)
+sdk().runCustomSignatureNew(payload, callback)
+sdk().createExternalAccount(payload, callback)
+sdk().updateExternalAccount(external_account_id, payload, callback)
+sdk().destroyExternalAccount(external_account_id, payload, callback)
+sdk().updateOrganization(organization_id, payload, callback)
+sdk().createReport(payload, callback)
+sdk().runSignature(signature_id, payload, callback)
+sdk().createSubOrganization(payload, callback)
+sdk().updateSubOrganization(suborganization_id, payload, callback)
+sdk().destroySubOrganization(suborganization_id, payload, callback)
+sdk().deactivateSuppression(suppression_id, payload, callback)
+sdk().createSignatureSuppression(payload, callback)
+sdk().createSignatureSuppressionByAlert(alert_id, payload, callback)
+sdk().createRegionSuppression(payload, callback)
+sdk().createRegionSuppressionByAlert(alert_id, payload, callback)
+sdk().createUniqueIdentifierSuppressionByAlert(alert_id, payload, callback)
+sdk().createTeam(payload, callback)
+sdk().updateTeam(team_id, payload, callback)
+sdk().destroyTeam(team_id, payload, callback)
+
+// with included parameters
+sdk({ include: 'region,tags' }).getAlerts(report_id, callback)
 ```
