@@ -98,31 +98,31 @@ module.exports = [
   {
     fn: 'createSignatureSuppression',
     path: 'suppressions/signatures',
-    method: 'PATCH',
+    method: 'POST',
     num_args: 2
   },
   {
     fn: 'createSignatureSuppressionByAlert',
     path: 'suppressions/alert/:id/signatures',
-    method: 'PATCH',
+    method: 'POST',
     num_args: 3
   },
   {
     fn: 'createRegionSuppression',
     path: 'suppressions/regions',
-    method: 'PATCH',
+    method: 'POST',
     num_args: 2
   },
   {
     fn: 'createRegionSuppressionByAlert',
     path: 'suppressions/alert/:id/regions',
-    method: 'PATCH',
+    method: 'POST',
     num_args: 3
   },
   {
     fn: 'createUniqueIdentifierSuppressionByAlert',
     path: 'suppressions/alert/:id/unique_identifiers',
-    method: 'PATCH',
+    method: 'POST',
     num_args: 3
   },
   {
