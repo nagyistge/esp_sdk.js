@@ -3,7 +3,7 @@ require('./test_getAlertsIncluded.js')
 require('./test_getDashboard.js')
 require('./test_getCustomSignature.js')
 
-var sdk = require('../../index.js')
+var sdk = require('../../esp_sdk.js')
 var test = require('tape')
 var get_routes = require('../../src/routes_GET.js')
 

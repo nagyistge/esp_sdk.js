@@ -3,7 +3,7 @@ var test = require('tape')
 test('getAlerts live', function (t) {
   t.plan(3)
 
-  var sdk = require('../../index.js')
+  var sdk = require('../../esp_sdk.js')
 
   var esp = sdk()
   esp.getAlerts(1183, function (err, data) {

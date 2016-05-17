@@ -15,6 +15,14 @@ export ESP_SECRET_ACCESS_KEY=9jtmPHfVA23BM...
 ```
 Create new credentials in the [API Keys](https://esp.evident.io/settings/api_keys) section of your ESP settings.
 
+##### new
+To hardcode the credentials for use in AWS Lambda edit the esp_sdk.js lines 1 and 2.
+```
+// esp_sdk.js
+var PUBKEY = process.env.ESP_ACCESS_KEY_ID || 'PUT YOUR KEY HERE'
+var SECKEY = process.env.ESP_SECRET_ACCESS_KEY || 'AND HERE.'
+```
+
 #### include the code
 ```javascript
 // include the sdk by requiring the module
