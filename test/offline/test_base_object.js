@@ -1,5 +1,5 @@
 var test = require('tape')
-var esp = require('../../index.js')
+var esp = require('../../esp_sdk.js')
 
 test('returns all the correct methods', function (t) {
   t.plan(36)

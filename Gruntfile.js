@@ -14,7 +14,7 @@ module.exports = function (grunt) {
           format: true,
           lint: true
         },
-        src: [ 'index.js', 'Gruntfile.js', './test/**/*.js', './src/*.js' ]
+        src: [ 'esp_sdk.js', 'Gruntfile.js', './test/**/*.js' ]
       }
     },
     run: {
@@ -25,7 +25,7 @@ module.exports = function (grunt) {
     },
     watch: {
       everything: {
-        files: [ 'index.js', 'Gruntfile.js', './test/**/*.js', './src/*.js' ],
+        files: [ 'esp_sdk.js', 'Gruntfile.js', './test/**/*.js' ],
         tasks: [ 'standard', 'run:test' ]
       }
     }

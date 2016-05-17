@@ -3,7 +3,7 @@ var test = require('tape')
 test('getCustomSignature', function (t) {
   t.plan(2)
 
-  var sdk = require('../../index.js')
+  var sdk = require('../../esp_sdk.js')
 
   var esp = sdk()
   esp.getCustomSignature(1, function (err, data) {

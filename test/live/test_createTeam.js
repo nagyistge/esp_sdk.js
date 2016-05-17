@@ -1,4 +1,4 @@
-var sdk = require('../../index.js')
+var sdk = require('../../esp_sdk.js')
 var test = require('tape')
 
 test('createTeam', function (t) {

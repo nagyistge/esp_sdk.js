@@ -3,7 +3,7 @@ var test = require('tape')
 test('getAlerts included', function (t) {
   t.plan(2)
 
-  var sdk = require('../../index.js')
+  var sdk = require('../../esp_sdk.js')
 
   var esp = sdk({include: 'region,signature,custom_signature'})
   esp.getAlerts(1183, function (err, data) {

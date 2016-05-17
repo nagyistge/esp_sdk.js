@@ -3,7 +3,7 @@ var test = require('tape')
 test('next() with no callback', function (t) {
   t.plan(2)
 
-  var sdk = require('../../index.js')
+  var sdk = require('../../esp_sdk.js')
 
   var esp = sdk()
 
@@ -24,7 +24,7 @@ test('next() with no callback', function (t) {
 test('next() with callback', function (t) {
   t.plan(2)
 
-  var sdk = require('../../index.js')
+  var sdk = require('../../esp_sdk.js')
 
   var esp = sdk()
 
