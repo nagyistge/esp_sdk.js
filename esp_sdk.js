@@ -597,6 +597,7 @@ function api_request (params) {
   }
 
   var canonical_string = [
+    params.method,
     opts.headers['Content-Type'],
     content_md5,
     opts.path,
