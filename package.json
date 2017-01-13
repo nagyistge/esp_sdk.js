@@ -1,6 +1,6 @@
 {
   "name": "evident",
-  "version": "4.0.4",
+  "version": "4.0.5",
   "description": "Javascript SDK for Evident Security Platform - evident.io",
   "main": "esp_sdk.js",
   "scripts": {
